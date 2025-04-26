@@ -51,35 +51,100 @@ def wiki_proxy():
     script = soup.new_tag("script")
     script.string = """
 document.addEventListener("DOMContentLoaded", function () {
-    const searchInput = document.getElementById('searchInput');
+    const form = document.querySelector('.search-container');
     const footer = document.querySelector('footer');
-    const body = document.body;
-    const html = document.documentElement;
+    const main = document.querySelector('main');
+    const searchInput = document.getElementById('searchInput');
+    const searchForm = document.querySelector('.minerva-search-form');
 
-    if (!searchInput || !footer) return;
+    if (!form || !footer || !main || !searchForm || !searchInput) return;
 
-    searchInput.addEventListener("focus", function () {
-        // Скрываем текст в футере
+    const lastModifiedBar = document.querySelectorAll('a.last-modified-bar');
+
+    // Деактивация кликов вне поиска
+    document.body.addEventListener("click", function (event) {
+        const isInsideForm = searchForm.contains(event.target);
+        const tag = event.target.tagName.toLowerCase();
+        const clickable = ["a", "button", "img"];
+        const isInputButton = tag === "input" && ["submit", "button"].includes(event.target.type);
+
+        if (!isInsideForm && (clickable.includes(tag) || isInputButton)) {
+            event.preventDefault();
+            event.stopPropagation();
+        }
+    }, true);
+
+    const blockerStyle = document.createElement("style");
+    blockerStyle.innerHTML = `
+        body * {
+            pointer-events: none !important;
+        }
+        .minerva-search-form, .minerva-search-form * {
+            pointer-events: auto !important;
+        }
+    `;
+    document.head.appendChild(blockerStyle);
+
+    form.addEventListener("click", function (e) {
+        e.stopPropagation();
+
+        // Скрываем футер
         const footerText = footer.querySelectorAll('*');
         footerText.forEach(element => {
             element.style.visibility = 'hidden';
         });
-
-        // Меняем фон футера на белый
         footer.style.backgroundColor = 'white';
+
+        // Скрываем main
+        const mainText = main.querySelectorAll('*');
+        mainText.forEach(element => {
+            if (!form.contains(element)) {
+                element.style.visibility = 'hidden';
+            }
+        });
+        main.style.backgroundColor = 'white';
+
+        // Меняем только border-color-base
+        document.documentElement.style.setProperty('--border-color-subtle', 'white');
+
+        // Полоска
+        lastModifiedBar.forEach(bar => {
+            bar.style.backgroundColor = 'white';
+            bar.style.borderBottom = '1px solid white';
+            bar.style.color = 'white';
+        });
     });
 
-    // Восстановление текста в футере и восстановление фона футера, когда пользователь кликает вне поля поиска
     document.addEventListener("click", function (event) {
-        if (!searchInput.contains(event.target)) {
+        if (!form.contains(event.target)) {
+            // Восстанавливаем футер
             const footerText = footer.querySelectorAll('*');
             footerText.forEach(element => {
                 element.style.visibility = '';
             });
-            footer.style.backgroundColor = '';  // Восстанавливаем фон футера
+            footer.style.backgroundColor = '';
+
+            // Восстанавливаем main
+            const mainText = main.querySelectorAll('*');
+            mainText.forEach(element => {
+                element.style.visibility = '';
+            });
+            main.style.backgroundColor = '';
+
+            // Возвращаем переменную к стандартному состоянию (пусто — значит наследуется из CSS)
+            document.documentElement.style.removeProperty('--border-color-subtle');
+
+            // Полоска
+            lastModifiedBar.forEach(bar => {
+                bar.style.backgroundColor = '';
+                bar.style.borderBottom = '';
+                bar.style.color = '';
+            });
         }
     });
 });
+
+
 """
 
     soup.body.append(script)
