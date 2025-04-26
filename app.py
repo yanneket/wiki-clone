@@ -2,6 +2,7 @@ from flask import Flask, request, Response
 import requests
 import re
 from bs4 import BeautifulSoup
+import os
 
 app = Flask(__name__)
 BASE_URL = "https://ru.m.wikipedia.org"
@@ -113,4 +114,5 @@ document.addEventListener("DOMContentLoaded", function () {
     return Response(html, mimetype="text/html")
 
 if __name__ == "__main__":
-    app.run(port=5000, debug=True)
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host='0.0.0.0', port=port)
