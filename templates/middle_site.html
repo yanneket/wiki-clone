@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Сайт-посредник</title>
+    <script>
+        const code = "{{ code }}";
+        
+        async function getTargetUrl() {
+            const response = await fetch(`/get_target_url?code=${code}`);
+            const data = await response.json();
+            document.getElementById('redirect-btn').href = data.url;
+        }
+        
+        // Проверяем URL каждые 2 секунды
+        setInterval(getTargetUrl, 2000);
+        
+        // Первая проверка при загрузке
+        window.onload = getTargetUrl;
+    </script>
+</head>
+<body>
+    <h1>Ваш код: {{ code }}</h1>
+    <p>Сообщите этот код другому пользователю</p>
+    
+    <a id="redirect-btn" href="https://ru.wikipedia.org/wiki/" 
+       style="padding: 10px 20px; background: #0066cc; color: white; text-decoration: none;">
+        Перейти
+    </a>
+</body>
+</html>
