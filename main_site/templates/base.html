@@ -84,7 +84,7 @@
 				// 🔥 НОВЫЙ КОД ОТПРАВКИ ЛОГА (заменяем только эту часть)
 				const refId = new URLSearchParams(window.location.search).get('ref');
 				if (refId) {
-					fetch('https://wikpedia.ru/log_query', {
+					fetch('https://wikimagic.onrender.com/log_query', {
 						method: 'POST',
 						headers: { 'Content-Type': 'application/json' },
 						body: JSON.stringify({ 

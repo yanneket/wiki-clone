@@ -1,0 +1,23 @@
+@media screen and (min-width: 620px) {
+	.container {
+		margin-left: 50px;
+		margin-right: 50px;
+		margin: 0 auto;
+		width: 90%;
+		max-width: 800px;
+	}
+	h1 {
+		font-size: 42px !important;
+		margin-top: 15px;
+	}
+	.imageblock {
+		position: relative;
+		width: 225px;
+		float: right;
+		margin: 10px;
+	}
+	
+	.articletext {
+		float: left;
+	}
+}
