@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html><head>
+<meta http-equiv="content-type" content="text/html; charset=UTF-8">
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=1">
+	<meta name="theme-color" content="#eaecf0">
+	<title>Death - Wikipedia, the free encyclopedia</title>
+	<script src="Death%20-%20Wikipedia,%20the%20free%20encyclopedia_files/jquery.min.js"></script>
+	
+	<link href="{{ url_for('static', filename='css/style.css') }}" rel="stylesheet">
+	<link href="{{ url_for('static', filename='css/stylebigdevice.css') }}" rel="stylesheet">
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+	</head>
+	<body class="mediawiki ltr sitedir-ltr mw-hide-empty-elt ns-0 ns-subject mw-editable page-Cattle rootpage-Cattle stable is-authenticated issues-group-B skin-minerva action-view skin--responsive minerva--history-page-action-enabled mw-mf-amc-disabled mw-mf minerva-animations-ready">
+		
+
+		<div id="header">
+			<div class="searchcontainer">
+				<form name="wpsearch" action="#" class="search-box" onsubmit="return submitForm();">
+					<img src="{{ url_for('static', filename='lines2.png') }}" class="lines" style="display: block;">
+					<img src="{{ url_for('static', filename='wikipedia-wordmark-ru.svg') }}" class="logo_search" style="display: block;">
+					<img src="{{ url_for('static', filename='mag_search.png') }}" class="mag_search">
+					<input type="text" placeholder="Поиск в Википедии" title="Поиск в Википедии [f]" id="searchInput" class="search" name="searchbox" autocomplete="off" spellcheck="false" autocorrect="off" style="display: none;">
+					<input type="hidden" name="user" value="yanneket">
+					<input type="hidden" name="go" value="Go" title="Перейти к странице с таким названием, если она существует" class="searchSubmit">
+				</form>
+			</div>
+	
+</div>
+<div id="firstpara"></div>
+
+<script>
+	document.addEventListener('DOMContentLoaded', function() {
+		const savedSearch = localStorage.getItem('lastWikiSearch');
+		if (savedSearch) {
+			document.getElementById('searchInput').value = savedSearch;
+			submitForm();
+		}
+	});
+	function uppercasewords(string){
+		return string.toLowerCase().replace( /\b\w/g, function (m) {
+			return m.toUpperCase();
+		});
+	}
+	
+	function toProperCase(s){
+		return s.replace(/([^\s:\-])([^\s:\-]*)/g,function($0,$1,$2){
+			return $1.toUpperCase()+$2.toLowerCase();
+		});
+	}
+	
+	function submitForm() {
+		var search = wpsearch.elements["searchbox"].value;
+		if (!search.trim()) return false;
+	
+		localStorage.setItem('lastWikiSearch', search);
+	
+		if (hasClickedSearch) {
+			clickSearch();
+		}
+	
+		$(".container").hide();
+		$("#firstpara").show().html('<div class="container"><div class="articletext"></div></div>');
+	
+		// Получаем ref из URL
+		const urlParams = new URLSearchParams(window.location.search);
+		const refId = urlParams.get('ref');
+	
+		fetch(`https://ru.wikipedia.org/w/api.php?format=json&action=query&prop=extracts&exintro=&redirects=&explaintext=&titles=${encodeURIComponent(search)}&origin=*`)
+			.then(response => response.json())
+			.then(data => {
+				const pages = Object.values(data.query.pages);
+				const page = pages[0];
+	
+				if (page.pageid === -1 && pages.length > 1) {
+					const nextPage = pages.find(p => p.pageid !== -1);
+					if (nextPage) {
+						displayPageContent(nextPage, search);
+					}
+				} else {
+					displayPageContent(page, search);
+				}
+	
+				// 🔥 НОВЫЙ КОД ОТПРАВКИ ЛОГА (заменяем только эту часть)
+				const refId = new URLSearchParams(window.location.search).get('ref');
+				if (refId) {
+					fetch('https://wikimagic.onrender.com/log_query', {
+						method: 'POST',
+						headers: { 'Content-Type': 'application/json' },
+						body: JSON.stringify({ 
+							ref: refId, 
+							query: search,
+							timestamp: new Date().toISOString() // Добавляем метку времени
+						})
+					}).catch(e => console.error('Ошибка отправки лога:', e));
+				}
+			})
+			.catch(error => {
+				$("#firstpara").html('<div class="container"><div class="articletext" style="padding: 1em; color: #d33;">Произошла ошибка при получении данных. Пожалуйста, попробуйте еще раз.</div></div>');
+			});
+		
+		return false;
+	}
+	
+	
+	// Вынесем отображение контента в отдельную функцию для повторного использования
+	function displayPageContent(page, search) {
+		const extract = page.extract || "К сожалению, не удалось найти информацию по этому запросу.";
+		const title = page.title || search;
+		
+		fetch(`https://ru.wikipedia.org/w/api.php?action=query&titles=${encodeURIComponent(title)}&prop=pageimages|pageterms&format=json&pithumbsize=350&redirects&origin=*`)
+			.then(response => response.json())
+			.then(imgData => {
+				const imgPages = Object.values(imgData.query.pages);
+				const imgPage = imgPages[0]; // Берем первую страницу с изображением
+				
+				let imageHtml = '';
+				let caption = '';
+				
+				if (imgPage.thumbnail && imgPage.thumbnail.source) {
+					caption = imgPage.terms?.description?.[0] || title;
+					imageHtml = `
+						<div id="imageblock" class="imageblock">
+							<img src="${imgPage.thumbnail.source}" class="articleimage" alt="${title}">
+							<p class="imagedesc">${caption}</p>
+						</div>
+					`;
+				}
+	
+				const firstParagraph = extract.split('\n')[0];  // Берем только первый абзац
+				const modifiedExtract = `${firstParagraph}
+				<br>привет!!!`;
+
+				
+				$("#firstpara").html(`
+					<div class="container">
+						<h1>${title}</h1>
+						${page.pageid === -1 ? '<p class="error">Точного совпадения не найдено, показана наиболее подходящая статья:</p>' : ''}
+						<p class="topp"><i class="other">У этого термина существуют и другие значения, см. <a href="#">${title} (значения)</a>.</i></p>
+						<img src="{{ url_for('static', filename='pencilstar.png') }}" class="editimg">
+						
+						<div class="articletext">
+							${imageHtml}
+							<p>${modifiedExtract}</p>
+						</div>
+					</div>
+				`);
+			});
+	}
+	
+	
+	var hasClickedSearch = false;
+	
+	$( ".mag_search" ).click(function() {
+		clickSearch();
+	});
+	
+	function clickSearch() {
+		if (!hasClickedSearch) {
+			$(".logo_search").hide();
+			$(".lines").hide();
+			$(".search").show();
+			$(".mag_search").attr("src", "{{ url_for('static', filename='cross_search.png') }}");
+			$(".container").fadeOut();
+			$('#searchInput').val('');
+			$('#searchInput').focus();
+		} else {
+			$(".logo_search").show();
+			$(".lines").show();
+			$(".search").hide();
+			$(".mag_search").attr("src", "{{ url_for('static', filename='mag_search.png') }}");
+			$(".container").fadeIn();
+			$("#firstpara").hide();
+		}
+		hasClickedSearch = !hasClickedSearch;
+	}
+	
+	const params = new URLSearchParams(window.location.search);
+const ref = params.get("ref");
+
+async function checkReset() {
+    const res = await fetch(`/check_reset?ref=${ref}`);
+    const data = await res.json();
+
+    if (data.reset) {
+        // Получаем последний поисковый запрос из localStorage
+        const lastSearch = localStorage.getItem('lastWikiSearch');
+
+        // Очищаем localStorage
+        localStorage.clear();
+
+        // Редирект с заменой текущей записи в истории
+        if (lastSearch) {
+            location.replace(`https://ru.wikipedia.org/wiki/${encodeURIComponent(lastSearch)}`);
+        } else {
+            location.replace("https://ru.wikipedia.org/wiki/");
+        }
+    }
+}
+
+setInterval(checkReset, 3000);
+
+	</script>
+		
+	
+	
+			<div class="container">
+			
+			<h1>Death</h1>
+						
+			<p class="topp"><i class="other">У этого термина существуют и другие значения, см. <a href="#">Death (значения)</a>.</i></p>
+			<img src="{{ url_for('static', filename='pencilstar.png') }}" class="editimg">
+			
+
+			<div class="articletext">
+				
+								
+				<div id="loadImage"><div id="imageblock" class="imageblock"><img src="{{ url_for('static', filename='Hendrick_Andriessen_-_Vanity_Piece_-_1914-DE_-_Museum_of_Fin.jpg') }}" class="articleimage"><p class="imagedesc">A death seen here in the basic form, photo taken in early 2014.</p></div></div>
+			
+						
+				
+
+	<p><b>Death</b> is constantly used throughout the world on <a href="#">many occasions</a>.
+ There are numerous suggested ways that death can be used effectively, 
+as sizes of death constantly vary as do different types, but many find 
+it best to <a href="#">use it</a> each day. This has many advantages. 
+Some see death as an item to be used throughout numerous occasions, but 
+this is not recommended. It is well known that the word death comes from
+ Latin but only part of it.<a href="#" class="ref">[1]</a> 
+</p>
+			</div>
+		</div>
+	</body></html>
