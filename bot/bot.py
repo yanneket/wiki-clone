@@ -62,7 +62,7 @@ async def handle_code(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     async with aiohttp.ClientSession() as session:
         async with session.post(
-            "https://https://wikicounter.ru//update_code",
+            "https://wikicounter.ru//update_code",
             json={'code': code, 'new_url': ref_link}
         ) as response:
             result = await response.json()
