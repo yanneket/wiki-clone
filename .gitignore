@@ -1,0 +1,56 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+
+# Virtual environments
+venv/
+env/
+ENV/
+.venv/
+
+# PyInstaller
+*.spec
+
+# Logs
+*.log
+logs/
+*.sqlite3
+*.db
+
+# Environment files
+.env
+*.env
+
+# VSCode / IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# System files
+.DS_Store
+Thumbs.db
+
+# Git-specific
+*.orig
+*.rej
+
+# Nginx, systemd (если не храните конфигурации в git)
+*.service
+*.conf
+
+# Node.js (если вдруг что-то фронтовое подключается)
+node_modules/
+
+# Pytest / coverage
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
