@@ -66,8 +66,8 @@
         event.preventDefault();
       };
 	  const code = "{{ code }}";
-        
-	  async function getTargetUrl() {
+	}
+	async function getTargetUrl() {
 		const response = await fetch(`/get_target_url?code=${code}`);
 		const data = await response.json();
 		
@@ -81,7 +81,8 @@
 	  
 	  // Первая проверка при загрузке
 	  window.onload = getTargetUrl;
-    }
+    }    
+	
   </script>
 </body>
 </html>
