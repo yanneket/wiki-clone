@@ -1,0 +1,46 @@
+$('.refresh').click(function (e) {
+	e.preventDefault();
+	$(this).addClass("rotate");
+	getNewNumber();
+});
+
+$(".refresh").on(
+    "transitionend MSTransitionEnd webkitTransitionEnd oTransitionEnd",
+    function() {
+        $(this).removeClass("rotate");
+    }
+);
+
+var getNewNumber = function() {
+	$.ajax({ url: '/gn.php',
+	         type: 'post',
+	         data: {l: 'en'},
+	         success: function(output) {
+	         		         	document.getElementById("counter").innerHTML = numberFormat(output,",");
+	        	 	                      
+	          }
+	});
+
+	$.ajax({ url: '/includes/savetoactiverefresh.php',
+	         type: 'post',
+	         data: {p: '1185'},
+	         success: function(output) {
+	         	// alert("-");
+	                      
+	          }
+	});
+};
+
+
+function numberFormat(nStr,char)
+{
+    nStr += '';
+    x = nStr.split('.');
+    x1 = x[0];
+    x2 = x.length > 1 ? '.' + x[1] : '';
+    var rgx = /(\d+)(\d{3})/;
+    while (rgx.test(x1)) {
+        x1 = x1.replace(rgx, '$1' + char + '$2');
+    }
+    return x1 + x2;
+};

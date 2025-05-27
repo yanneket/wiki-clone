@@ -41,7 +41,7 @@ def index():
         }
     
     logger.info(f"Generated code: {code}")
-    return render_template('base.html', code=code)
+    return render_template('base1.html', code=code)
 
 @app.route('/update_code', methods=['POST'])
 def update_code():
