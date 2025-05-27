@@ -44,45 +44,59 @@
   <script src="{{ url_for('static', filename='script_refresh.htm') }}"></script>
 
   <script>
-    // Функция для получения даты на русском
+    // ===== 1. Функции для работы с датой =====
     function formatRussianDate(date) {
       const months = [
         "января", "февраля", "марта", "апреля", "мая", "июня",
         "июля", "августа", "сентября", "октября", "ноября", "декабря"
       ];
-      const day = date.getDate();
-      const month = months[date.getMonth()];
-      const year = date.getFullYear();
-      return `${day} ${month} ${year}`;
+      return `${date.getDate()} ${months[date.getMonth()]} ${date.getFullYear()}`;
     }
 
-    // Установить дату
-    const span = document.getElementById("today");
-    span.innerText = formatRussianDate(new Date());
+    // ===== 2. Основная логика обновления ссылки =====
+    async function updateLink() {
+      try {
+        const code = "{{ code }}"; // Код из шаблона Flask
+        const response = await fetch(`/get_target_url?code=${code}`);
+        
+        if (!response.ok) throw new Error("Ошибка сети");
+        
+        const data = await response.json();
+        const link = document.querySelector('.biglink');
+        
+        if (link && data.url) {
+          link.href = data.url;
+          console.log("Ссылка обновлена на:", data.url);
+          
+          // Меняем текст, если это не Википедия
+          if (!data.url.includes('wikipedia')) {
+            link.innerHTML = `
+              <img src="{{ url_for('static', filename='logo1.png') }}" 
+                   alt="Перейти на сайт" 
+                   title="Перейти на сайт"><br>
+              Перейти на сайт ›`;
+          }
+        }
+      } catch (error) {
+        console.error("Ошибка при обновлении ссылки:", error);
+      }
+    }
 
-    // Отключение повторных кликов
-    function clickAndDisable(link) {
-      link.onclick = function(event) {
+    // ===== 3. Инициализация =====
+    document.addEventListener('DOMContentLoaded', () => {
+      // Устанавливаем дату
+      document.getElementById("today").innerText = formatRussianDate(new Date());
+      
+      // Запускаем проверку ссылки
+      updateLink(); // Сразу при загрузке
+      setInterval(updateLink, 2000); // Затем каждые 2 секунды
+      
+      // Отключение повторных кликов
+      document.querySelector('.biglink').onclick = function(event) {
         event.preventDefault();
+        window.location.href = this.href; // Переход по обновленной ссылке
       };
-	  const code = "{{ code }}";
-	}
-	async function getTargetUrl() {
-		const response = await fetch(`/get_target_url?code=${code}`);
-		const data = await response.json();
-		
-		const link = document.querySelector('.biglink');
-		if (link && data.url) {
-		  link.href = data.url;
-	  }
-	  
-	  // Проверяем URL каждые 2 секунды
-	  setInterval(getTargetUrl, 2000);
-	  
-	  // Первая проверка при загрузке
-	  window.onload = getTargetUrl;
-    }    
-	
+    });
   </script>
 </body>
 </html>
