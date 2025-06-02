@@ -18,7 +18,7 @@ app = Flask(
 # Хранилище кодов и ссылок
 code_storage = {}
 storage_lock = Lock()
-CODE_EXPIRE = timedelta(minutes=10)
+CODE_EXPIRE = timedelta(minutes=2)
 
 # Настройка логов
 logging.basicConfig(
@@ -127,8 +127,6 @@ def cleanup_expired_codes():
                 del code_storage[code]
         time.sleep(60)
 
-
-if __name__ == '__main__':
-    logger.info("Запуск фоновой очистки и приложения Flask")
-    threading.Thread(target=cleanup_expired_codes, daemon=True).start()
-    app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 5000)), debug=False)
+# === ВСТАВЬ ЭТО В САМОМ КОНЦЕ app.py ===
+cleanup_thread = threading.Thread(target=cleanup_expired_codes, daemon=True)
+cleanup_thread.start()
