@@ -137,7 +137,7 @@ async def handle_code_input(update: Update, context: ContextTypes.DEFAULT_TYPE):
             ) as resp:
                 data = await resp.json()
                 if data.get("status") == "success":
-                    await update.message.reply_text(f"✅ Готово! Ваша ссылка:\n{ref_link}")
+                    await update.message.reply_text(f"✅ Код найден, устанавливаем связь...")
                 else:
                     await update.message.reply_text("❌ Код не найден.")
     except Exception as e:

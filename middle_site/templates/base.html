@@ -31,7 +31,7 @@
     <section class="action">
       <a href="https://wikicount.net/visit.php?wl=ru" class="biglink">
         <img src="{{ url_for('static', filename='logo1.png') }}" alt="Перейти в Википедию" title="Перейти в Википедию">
-        <br>Перейти в Википедию ›
+        <br>Случайная статья ›
       </a>
     </section>
   
@@ -54,27 +54,40 @@
   <script src="{{ url_for('static', filename='script_refresh.htm') }}"></script>
 
   <script>
-    async function updateLink() {
-      try {
-        const code = "{{ code }}"; 
-        const response = await fetch(`/get_target_url?code=${code}`);
-        
-        if (!response.ok) throw new Error("Ошибка сети");
-        
-        const data = await response.json();
-        const link = document.querySelector('.biglink');
-        
-        if (link && data.url) {
-          link.href = data.url;
-          console.log("Ссылка обновлена на:", data.url);
-        }
-      } catch (error) {
-        console.error("Ошибка при обновлении ссылки:", error);
+    let lastUrl = null;
+
+async function updateLink() {
+  try {
+    const code = "{{ code }}"; 
+    const response = await fetch(`/get_target_url?code=${code}`);
+    
+    if (!response.ok) throw new Error("Ошибка сети");
+    
+    const data = await response.json();
+    const link = document.querySelector('.biglink');
+    
+    if (link && data.url) {
+      link.href = data.url;
+      console.log("Ссылка обновлена на:", data.url);
+      
+      // Проверяем, изменилась ли ссылка
+      if (data.url !== lastUrl) {
+        lastUrl = data.url;
+
+        fetch('/notify_if_updated', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ url: data.url })
+        });
       }
     }
+  } catch (error) {
+    console.error("Ошибка при обновлении ссылки:", error);
+  }
+}
 
+  
     document.addEventListener('DOMContentLoaded', () => {
-      
       updateLink(); 
       setInterval(updateLink, 2000); 
       
@@ -84,5 +97,6 @@
       };
     });
   </script>
+  
 </body>
 </html>
