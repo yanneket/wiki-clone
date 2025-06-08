@@ -9,7 +9,7 @@ import json
 # === Настройки ===
 BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__)))
 BOT_TOKEN = '7953140297:AAGwWVx3zwmo-9MbQ-UUU1764nljCxuncQU'
-RESET_EXPIRE_SECONDS = 10  # для Redis TTL
+RESET_EXPIRE_SECONDS = 30  # для Redis TTL
 
 # === Redis клиент ===
 redis_client = redis.Redis(host='localhost', port=6379, db=0, decode_responses=True)
@@ -51,6 +51,11 @@ def get_reset(ref_id):
     except json.JSONDecodeError:
         logger.warning(f"[GET_RESET] Ошибка JSON декодирования ключа {key}")
         return None
+
+
+def try_lock_reset(ref_id):
+    key = f"lock:reset:{ref_id}"
+    return redis_client.set(key, '1', nx=True, ex=2)
 
 
 def delete_reset(ref_id):
@@ -105,42 +110,49 @@ def check_reset():
     if not ref:
         logger.info("[CHECK_RESET] Нет параметра ref")
         return jsonify({'reset': False})
+
     logger.info(f"[CHECK_RESET] Проверка сброса для ID: {ref}")
     reset_data = get_reset(ref)
+
     if reset_data:
         manual = reset_data.get("manual", False)
-        # expired — если ключ уже удалён Redis, то reset_data будет None, и сюда не попадём
-        # В Redis TTL автоматически удаляет ключ, значит, если ключ существует — значит не истёк
 
         if manual:
-            logger.info(f"[CHECK_RESET] Сработал ручной сброс для ID: {ref}")
-            # После сброса удаляем ключ
-            delete_reset(ref)
+            if try_lock_reset(ref):
+                logger.info(f"[CHECK_RESET] Сработал ручной сброс для ID: {ref}")
+                delete_reset(ref)
+                try:
+                    message = f"🔄 Сработал сброс для ID: {ref}\nТип: ручной"
+                    requests.post(
+                        f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage",
+                        json={"chat_id": ref, "text": message}
+                    )
+                except Exception as e:
+                    logger.error(f"[CHECK_RESET] Ошибка отправки в Telegram: {e}")
+            else:
+                logger.info(f"[CHECK_RESET] Повторный ручной сброс проигнорирован для ID: {ref}")
+            return jsonify({'reset': True})
+
+        else:
+            logger.info(f"[CHECK_RESET] Сброс не сработал, ждем истечения TTL для ID: {ref}")
+            return jsonify({'reset': False})
+    else:
+        # автоматический сброс (по TTL)
+        if try_lock_reset(ref):
+            logger.info(f"[CHECK_RESET] Автоматический сброс сработал для ID: {ref}")
             try:
-                message = f"🔄 Сработал сброс для ID: {ref}\nТип: ручной"
+                message = f"🔄 Сработал сброс для ID: {ref}\nТип: автоматический (истечение таймера)"
                 requests.post(
                     f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage",
                     json={"chat_id": ref, "text": message}
                 )
             except Exception as e:
                 logger.error(f"[CHECK_RESET] Ошибка отправки в Telegram: {e}")
-            return jsonify({'reset': True})
         else:
-            # manual=False и ключ существует => сброс ещё не истёк (TTL есть)
-            logger.info(f"[CHECK_RESET] Сброс не сработал, ждем истечения TTL для ID: {ref}")
-            return jsonify({'reset': False})
-    else:
-        # Ключ отсутствует — значит сброс истек (автоматический)
-        logger.info(f"[CHECK_RESET] Автоматический сброс сработал для ID: {ref}")
-        try:
-            message = f"🔄 Сработал сброс для ID: {ref}\nТип: автоматический (истечение таймера)"
-            requests.post(
-                f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage",
-                json={"chat_id": ref, "text": message}
-            )
-        except Exception as e:
-            logger.error(f"[CHECK_RESET] Ошибка отправки в Telegram: {e}")
+            logger.info(f"[CHECK_RESET] Повторный авто-сброс проигнорирован для ID: {ref}")
+
         return jsonify({'reset': True})
+
 
 
 @app.route('/trigger_reset')
