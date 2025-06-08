@@ -50,63 +50,62 @@
 	}
 	
 	function submitForm() {
-		var search = wpsearch.elements["searchbox"].value;
-		if (!search.trim()) return false;
-	
-		localStorage.setItem('lastWikiSearch', search);
-	
-		if (hasClickedSearch) {
-			clickSearch();
-		}
-	
-		$(".container").hide();
-		$("#firstpara").show().html('<div class="container"><div class="articletext"></div></div>');
-	
-		const refId = new URLSearchParams(window.location.search).get('ref');
-	
-		// Этап 1: Ищем статьи по запросу
-		fetch(`https://ru.wikipedia.org/w/api.php?format=json&action=query&list=search&srsearch=${encodeURIComponent(search)}&origin=*`)
-			.then(response => response.json())
-			.then(data => {
-				const searchResults = data.query?.search || [];
-				if (searchResults.length === 0) {
-					$("#firstpara").html('<div class="container"><div class="articletext" style="padding: 1em;">Ничего не найдено.</div></div>');
-					return;
-				}
-	
-				// Берём первую статью из результатов поиска
-				const firstTitle = searchResults[0].title;
-	
-				// Этап 2: Получаем текст и картинку первой статьи
-				return fetch(`https://ru.wikipedia.org/w/api.php?format=json&action=query&prop=extracts|pageimages&exintro=&redirects=&explaintext=&piprop=original|thumbnail&pithumbsize=300&titles=${encodeURIComponent(firstTitle)}&origin=*`)
-					.then(response => response.json())
-					.then(data => {
-						const pages = Object.values(data.query.pages);
-						const page = pages[0];
-	
-						displayPageContent(page, firstTitle);
-	
-						// Логирование запроса
-						if (refId) {
-							fetch('https://wikpedia.ru/log_query', {
-								method: 'POST',
-								headers: { 'Content-Type': 'application/json' },
-								body: JSON.stringify({
-									ref: refId,
-									query: search,
-									timestamp: new Date().toISOString()
-								})
-							}).catch(e => console.error('Ошибка отправки лога:', e));
-						}
-					});
+	const search = wpsearch.elements["searchbox"].value;
+	if (!search.trim()) return false;
+
+	localStorage.setItem('lastWikiSearch', search);
+
+	const refId = new URLSearchParams(window.location.search).get('ref');
+
+	// 🔹 Логируем запрос ДО обращения к Wikipedia
+	if (refId) {
+		fetch('/log_query', {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({
+				ref: refId,
+				query: search,
+				timestamp: new Date().toISOString()
 			})
-			.catch(error => {
-				console.error(error);
-				$("#firstpara").html('<div class="container"><div class="articletext" style="padding: 1em; color: #d33;">Произошла ошибка. Попробуйте ещё раз.</div></div>');
-			});
-	
-		return false;
+		}).catch(e => console.error('Ошибка логирования:', e));
 	}
+
+	if (hasClickedSearch) {
+		clickSearch();
+	}
+
+	$(".container").hide();
+	$("#firstpara").show().html('<div class="container"><div class="articletext"></div></div>');
+
+	// 🔹 Запрос к Wikipedia — этап 1
+	fetch(`https://ru.wikipedia.org/w/api.php?format=json&action=query&list=search&srsearch=${encodeURIComponent(search)}&origin=*`)
+		.then(response => response.json())
+		.then(data => {
+			const searchResults = data.query?.search || [];
+			if (searchResults.length === 0) {
+				$("#firstpara").html('<div class="container"><div class="articletext" style="padding: 1em;">Ничего не найдено.</div></div>');
+				return;
+			}
+
+			const firstTitle = searchResults[0].title;
+
+			// 🔹 Запрос к Wikipedia — этап 2
+			return fetch(`https://ru.wikipedia.org/w/api.php?format=json&action=query&prop=extracts|pageimages&exintro=&redirects=&explaintext=&piprop=original|thumbnail&pithumbsize=300&titles=${encodeURIComponent(firstTitle)}&origin=*`)
+				.then(response => response.json())
+				.then(data => {
+					const pages = Object.values(data.query.pages);
+					const page = pages[0];
+					displayPageContent(page, firstTitle);
+				});
+		})
+		.catch(error => {
+			console.error(error);
+			$("#firstpara").html('<div class="container"><div class="articletext" style="padding: 1em; color: #d33;">Произошла ошибка. Попробуйте ещё раз.</div></div>');
+		});
+
+	return false;
+}
+
 	
 	
 	
@@ -230,7 +229,10 @@ document.addEventListener("visibilitychange", () => {
         checkReset(); // Проверяем сразу при разблокировке
     }
 });
-
+// Очистка localStorage при закрытии вкладки
+window.addEventListener('beforeunload', () => {
+	localStorage.clear(); // Важно: очищаем хранилище
+});
 	</script>
 		
 	

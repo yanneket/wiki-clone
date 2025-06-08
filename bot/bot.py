@@ -93,8 +93,22 @@ async def handle_menu_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE
     elif text == "🔄 Концы в воду":
         user_id = update.effective_user.id
         async with aiohttp.ClientSession() as session:
-            await session.get(f"{BASE_SITE_URL}/trigger_reset?ref={user_id}")
-        await update.message.reply_text("✅ Сброс выполнен!")
+            check_url = f"{BASE_SITE_URL}/check_reset_key?ref={user_id}"
+            async with session.get(check_url) as resp:
+                if resp.status != 200:
+                    await update.message.reply_text("⚠️ Ошибка проверки состояния.")
+                    return
+                data = await resp.json()
+                if not data.get('exists'):
+                    await update.message.reply_text("❌ Нечего удалять")
+                    return
+            
+            async with session.get(f"{BASE_SITE_URL}/trigger_reset?ref={user_id}") as resp:
+                if resp.status == 200:
+                    await update.message.reply_text("✅ Момент...")
+                else:
+                    await update.message.reply_text("⚠️ Не удалось вызвать сброс")
+
     
     elif text == "🔢 Ввести код":
         context.user_data["awaiting_code"] = True
