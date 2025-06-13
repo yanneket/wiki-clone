@@ -199,7 +199,8 @@ def main():
     app.add_handler(CommandHandler("allow", allow_user))
 
     # Обработчики сообщений (важен порядок!)
-    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND & filters.Regex(r'^(🔗 Моя ссылка|🔄 Концы в воду|🔢 Ввести код)$'), handle_menu_buttons))
+    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND & filters.Regex(r'^(🔗 Моя ссылка|🔄 Концы в воду|🔢 Ввести код|🧮 Калькулятор)$')
+, handle_menu_buttons))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_code_input))
     
     app.run_polling()

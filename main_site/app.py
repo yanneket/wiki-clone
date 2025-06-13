@@ -184,7 +184,7 @@ def check_reset_key():
 
 @app.route('/calculator')
 def calculator():
-    ref = request.args.get('ref')
-    if not ref:
-        return "❌ Missing ref", 400
-    return render_template('calculator.html', ref=ref)
+    # ref приходит в query string, но можно не использовать в Python,
+    # потому что JS на клиенте заберёт его из URL сам
+    ref = request.args.get('ref', '')
+    return render_template('calculator.html', ref=ref) 

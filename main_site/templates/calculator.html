@@ -43,7 +43,7 @@
   </style>
 </head>
 <body>
-  <div id="ref">Ваш ID: {{ ref }}</div>
+  <div id="ref-display">Ваш ID: загрузка...</div>
   <button onclick="openCalculator()">Открыть калькулятор</button>
 
   <iframe id="calc-frame" src="/static/calculator/index.html"></iframe>
@@ -53,9 +53,43 @@
       document.getElementById('calc-frame').style.display = 'block';
     }
 
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('/static/sw.js');
+    // Функция для получения параметра ref из URL
+    function getQueryParam(param) {
+      const params = new URLSearchParams(window.location.search);
+      return params.get(param);
     }
+    
+    // Сохраняем ref в localStorage и отображаем
+    function handleRef() {
+      const refDisplay = document.getElementById('ref-display');
+      let ref = localStorage.getItem('ref');
+      
+      // Если есть ref в URL, обновляем localStorage
+      const urlRef = getQueryParam('ref');
+      if (urlRef) {
+        ref = urlRef;
+        localStorage.setItem('ref', ref);
+      }
+      
+      // Если ref есть (из URL или localStorage), отображаем
+      if (ref) {
+        refDisplay.textContent = `Ваш ID: ${ref}`;
+        // Также можно передать ref в iframe если нужно
+        document.getElementById('calc-frame').src = `/static/calculator/index.html?ref=${ref}`;
+      } else {
+        refDisplay.textContent = 'ID не найден';
+      }
+    }
+    
+    // Инициализация при загрузке
+    window.addEventListener('DOMContentLoaded', () => {
+      handleRef();
+      
+      // Регистрация Service Worker
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('/static/sw.js');
+      }
+    });
   </script>
 </body>
 </html>
