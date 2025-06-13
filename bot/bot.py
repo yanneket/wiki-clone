@@ -74,22 +74,38 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
     await show_main_menu(update, context)
 
+
+async def shorten_url(long_url: str) -> str:
+    api_url = f"https://is.gd/create.php?format=simple&url={long_url}"
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.get(api_url) as resp:
+                if resp.status == 200:
+                    return await resp.text()
+    except Exception as e:
+        logging.error(f"[SHORTEN_URL] Ошибка сокращения URL: {e}")
+    return long_url  # fallback
+
+
 # Обработка кнопок меню
 async def handle_menu_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not await check_access(update):
         return
     text = update.message.text
-    
+
     if text == "🔗 Моя ссылка":
         user_id = update.effective_user.id
         ref_link = f"{BASE_SITE_URL}?ref={user_id}"
+        short_link = await shorten_url(ref_link)
+
         await update.message.reply_text(
-            f"🔗 Ваша ссылка:\n{ref_link}",
+            f"🔗 Ваша ссылка:\n{short_link}",
             reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("🌐 Перейти", url=ref_link)]
+                [InlineKeyboardButton("🌐 Перейти", url=short_link)]
             ])
         )
-    
+
+
     elif text == "🔄 Концы в воду":
         user_id = update.effective_user.id
         async with aiohttp.ClientSession() as session:
@@ -102,47 +118,39 @@ async def handle_menu_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE
                 if not data.get('exists'):
                     await update.message.reply_text("❌ Нечего удалять")
                     return
-            
+
             async with session.get(f"{BASE_SITE_URL}/trigger_reset?ref={user_id}") as resp:
                 if resp.status == 200:
                     await update.message.reply_text("✅ Момент...")
                 else:
                     await update.message.reply_text("⚠️ Не удалось вызвать сброс")
 
-    
     elif text == "🔢 Ввести код":
         context.user_data["awaiting_code"] = True
-        await update.message.reply_text(
-            "🔢 Введите 4-значный код:",
-            reply_markup=ReplyKeyboardMarkup(
-                [[KeyboardButton("🔙 Отмена")]],
-                resize_keyboard=True
-            )
-        )
+        await update.message.reply_text("🔢 Введите 4-значный код:")
+
+
+    
 
 # Обработка ввода кода
 async def handle_code_input(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not await check_access(update):
         return
+
+    # Если не ждём код — игнорируем
     if not context.user_data.get("awaiting_code"):
         return
-    
+
     text = update.message.text
-    
-    # Обработка отмены
-    if text == "🔙 Отмена":
-        context.user_data["awaiting_code"] = False
-        await show_main_menu(update, context)
-        return
-    
-    # Проверка кода
+
+    # Проверка формата кода
     if not text.isdigit() or len(text) != 4:
         await update.message.reply_text("❌ Введите корректный 4-значный код.")
         return
-    
+
     user_id = update.effective_user.id
     ref_link = f"{BASE_SITE_URL}?ref={user_id}"
-    
+
     try:
         async with aiohttp.ClientSession() as session:
             async with session.post(
@@ -151,15 +159,15 @@ async def handle_code_input(update: Update, context: ContextTypes.DEFAULT_TYPE):
             ) as resp:
                 data = await resp.json()
                 if data.get("status") == "success":
-                    await update.message.reply_text(f"✅ Код найден, устанавливаем связь...")
+                    await update.message.reply_text("✅ Код найден, устанавливаем связь...")
                 else:
                     await update.message.reply_text("❌ Код не найден.")
     except Exception as e:
         logging.error(f"Error updating code: {e}")
         await update.message.reply_text("⚠️ Произошла ошибка, попробуйте позже")
-    
+
     context.user_data["awaiting_code"] = False
-    await show_main_menu(update, context)
+
 
 # Логи с кнопкой сброса
 async def send_log(context: ContextTypes.DEFAULT_TYPE, user_id: int, query_text: str):

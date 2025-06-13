@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, render_template, request, jsonify, make_response
 import logging
 import requests
 from datetime import timedelta, datetime
@@ -69,7 +69,11 @@ def home():
     ref = request.args.get('ref', '')
     if ref:
         logger.info(f"[HOME] Посещение с ID: {ref}")
-    return render_template('base.html')
+    response = make_response(render_template('base.html'))
+    response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
+    response.headers['Pragma'] = 'no-cache'
+    response.headers['Expires'] = '0'
+    return response
 
 
 @app.route('/log_query', methods=['POST'])

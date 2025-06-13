@@ -30,7 +30,19 @@
 <div id="firstpara"></div>
 
 <script>
+	window.addEventListener('load', () => {
+    checkIfResetNeeded();
+});
+
+// 2. При возврате из bfcache (дублируем для надёжности)
+window.addEventListener('pageshow', (event) => {
+    if (event.persisted) {
+        checkIfResetNeeded();
+    }
+});
+
 	document.addEventListener('DOMContentLoaded', function() {
+		checkReset();
 		const savedSearch = localStorage.getItem('lastWikiSearch');
 		if (savedSearch) {
 			document.getElementById('searchInput').value = savedSearch;
@@ -88,7 +100,7 @@
 			}
 
 			const firstTitle = searchResults[0].title;
-
+			
 			// 🔹 Запрос к Wikipedia — этап 2
 			return fetch(`https://ru.wikipedia.org/w/api.php?format=json&action=query&prop=extracts|pageimages&exintro=&redirects=&explaintext=&piprop=original|thumbnail&pithumbsize=300&titles=${encodeURIComponent(firstTitle)}&origin=*`)
 				.then(response => response.json())
@@ -229,10 +241,16 @@ document.addEventListener("visibilitychange", () => {
         checkReset(); // Проверяем сразу при разблокировке
     }
 });
-// Очистка localStorage при закрытии вкладки
-window.addEventListener('beforeunload', () => {
-	localStorage.clear(); // Важно: очищаем хранилище
+window.addEventListener('pageshow', function(event) {
+	if (event.persisted) {
+		console.log("🔁 Bfcache: checkReset()");
+		checkReset();
+	}
 });
+if (performance.getEntriesByType("navigation")[0].type === "back_forward") {
+	console.log("PERFORMANCE API: возврат назад");
+	checkReset();
+}
 	</script>
 		
 	

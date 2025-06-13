@@ -3,17 +3,17 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=1">
-  <title>Сколько статей в Википедии? — Подсчёт статей</title>
-  <meta name="description" content="Живой приблизительный счётчик количества статей в русской Википедии. Этот сайт показывает, сколько страниц в Википедии в данный момент.">
-  <meta name="keywords" content="википедия количество статей, сколько статей в википедии, сколько страниц в русской википедии, счетчик статей википедии">
+  <title>Викикаунтер - Сколько статей в Википедии? — Подсчёт статей</title>
+  <meta name="description" content="Викикаунтер - живой приблизительный счётчик количества статей в русской Википедии. Этот сайт показывает, сколько страниц в Википедии в данный момент.">
+  <meta name="keywords" content="викикаунтер, википедия количество статей, сколько статей в википедии, сколько страниц в русской википедии, счетчик статей википедии">
   <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='style.css') }}">
   <link rel="icon" href="https://wikicount.net/favicon.ico" type="image/x-icon">
 </head>
 <body>
   <main id="content">
     <header>
-      <h1>Количество статей в русской Википедии</h1>
-      <h2>Сколько статей в Википедии?</h2>
+      <h1>Викикаунтер — количество статей в русской Википедии</h1>
+      <h2>Сколько статей в Википедии? Узнай с помощью Викикаунтера</h2>
     </header>
   
     <section class="counter-section">
@@ -64,6 +64,7 @@ async function updateLink() {
     if (!response.ok) throw new Error("Ошибка сети");
     
     const data = await response.json();
+    
     const link = document.querySelector('.biglink');
     
     if (link && data.url) {
