@@ -181,3 +181,4 @@ def check_reset_key():
     exists = redis_client.exists(key)
     return jsonify({'exists': bool(exists)})
 
+
