@@ -63,7 +63,7 @@ async def show_main_menu(update: Update, context: ContextTypes.DEFAULT_TYPE, tex
         return
     keyboard = [
         [KeyboardButton("🔗 Моя ссылка"), KeyboardButton("🔄 Концы в воду")],
-        [KeyboardButton("🔢 Ввести код")]
+        [KeyboardButton("🔢 Ввести код"), KeyboardButton("🧮 Калькулятор")]
     ]
     reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
     await update.message.reply_text(text, reply_markup=reply_markup)
@@ -130,7 +130,16 @@ async def handle_menu_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE
         await update.message.reply_text("🔢 Введите 4-значный код:")
 
 
-    
+    elif text == "🧮 Калькулятор":
+    	user_id = update.effective_user.id
+    	link = f"{BASE_SITE_URL}/calculator?ref={user_id}"
+    	await update.message.reply_text(
+        	"🧮 Ваш калькулятор:",
+        	reply_markup=InlineKeyboardMarkup([
+            		[InlineKeyboardButton("Открыть калькулятор", url=link)]
+        	])
+    	)
+
 
 # Обработка ввода кода
 async def handle_code_input(update: Update, context: ContextTypes.DEFAULT_TYPE):

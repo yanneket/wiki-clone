@@ -182,3 +182,9 @@ def check_reset_key():
     return jsonify({'exists': bool(exists)})
 
 
+@app.route('/calculator')
+def calculator():
+    ref = request.args.get('ref')
+    if not ref:
+        return "❌ Missing ref", 400
+    return render_template('calculator.html', ref=ref)

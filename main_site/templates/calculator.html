@@ -1,260 +1,61 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Приложение с калькулятором и меню</title>
-<style>
-  /* --- Стили iPhone калькулятора (как у тебя) --- */
-  * { box-sizing: border-box; }
-  body {
-    background: #f2f2f7;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen,
-      Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif;
-    margin: 0;
-    padding: 20px;
-    min-height: 100vh;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-  }
-
-  /* Меню */
-  #main-menu {
-    margin-bottom: 30px;
-    display: flex;
-    gap: 15px;
-  }
-  #main-menu button {
-    padding: 12px 18px;
-    font-size: 1rem;
-    border-radius: 8px;
-    border: none;
-    cursor: pointer;
-    background: #007aff;
-    color: white;
-    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
-    transition: background 0.3s ease;
-  }
-  #main-menu button:hover {
-    background: #005fcc;
-  }
-
-  /* Калькулятор */
-  #calculator {
-    background: #d1d1d6;
-    border-radius: 40px;
-    padding: 20px;
-    width: 320px;
-    box-shadow:
-      inset 0 3px 5px #e9e9f1,
-      0 15px 30px rgba(0, 0, 0, 0.25);
-  }
-  .screen {
-    background: #f2f2f7;
-    border-radius: 36px;
-    height: 80px;
-    text-align: right;
-    font-size: 3rem;
-    line-height: 80px;
-    padding: 0 20px;
-    margin-bottom: 25px;
-    box-shadow: inset 0 3px 8px rgba(0,0,0,0.12);
-    user-select: none;
-    overflow-x: auto;
-  }
-  .buttons {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 14px;
-  }
-  button.calc-btn {
-    background: #fff;
-    border: none;
-    border-radius: 36px;
-    font-size: 1.8rem;
-    font-weight: 600;
-    box-shadow: 0 6px 12px rgba(0,0,0,0.1);
-    padding: 18px 0;
-    color: #000;
-    user-select: none;
-    cursor: pointer;
-    transition: background 0.25s ease, box-shadow 0.25s ease;
-  }
-  button.calc-btn:active {
-    background: #c7c7cc;
-    box-shadow: inset 0 3px 6px rgba(0,0,0,0.2);
-  }
-  button.calc-btn.operator {
-    background: #ff9500;
-    color: white;
-    box-shadow: 0 6px 15px rgba(255, 149, 0, 0.6);
-  }
-  button.calc-btn.operator:active {
-    background: #cc7a00;
-    box-shadow: inset 0 3px 6px rgba(0,0,0,0.3);
-  }
-  button.calc-btn.zero {
-    grid-column: span 2;
-  }
-
-  /* Скрывать калькулятор по умолчанию */
-  #calculator {
-    display: none;
-  }
-</style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="theme-color" content="#ffffff"/>
+  <link rel="manifest" href="/static/manifest.json">
+  <link rel="apple-touch-icon" href="/static/icons/icon-192.png">
+  <title>Калькулятор</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      margin: 0;
+      background: #f0f0f0;
+    }
+    #ref {
+      font-size: 16px;
+      margin-bottom: 20px;
+      color: #333;
+    }
+    button {
+      font-size: 20px;
+      padding: 15px 30px;
+      border: none;
+      background: #007aff;
+      color: white;
+      border-radius: 12px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.15);
+    }
+    #calc-frame {
+      display: none;
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      width: 100vw; height: 100vh;
+      border: none;
+      z-index: 10;
+    }
+  </style>
 </head>
 <body>
+  <div id="ref">Ваш ID: {{ ref }}</div>
+  <button onclick="openCalculator()">Открыть калькулятор</button>
 
-<!-- Главное меню -->
-<div id="main-menu">
-  <button id="copy-link">Скопировать ссылку</button>
-  <button id="reset-btn">Сбросить</button>
-  <button id="open-calculator">Ввести код</button>
-</div>
+  <iframe id="calc-frame" src="/static/calculator/index.html"></iframe>
 
-<!-- Калькулятор -->
-<div id="calculator">
-  <div class="screen" id="screen">0</div>
-  <div class="buttons">
-    <button class="calc-btn">7</button>
-    <button class="calc-btn">8</button>
-    <button class="calc-btn">9</button>
-    <button class="calc-btn operator">×</button>
-
-    <button class="calc-btn">4</button>
-    <button class="calc-btn">5</button>
-    <button class="calc-btn">6</button>
-    <button class="calc-btn" id="equals">=</button>
-
-    <button class="calc-btn">1</button>
-    <button class="calc-btn">2</button>
-    <button class="calc-btn">3</button>
-    <button class="calc-btn" id="clear">C</button>
-
-    <button class="calc-btn zero">0</button>
-    <button class="calc-btn" id="backspace">←</button>
-  </div>
-</div>
-
-<script>
-  // Пример твоих функций из BOT_FUNCTIONS (можешь заменить)
-  const BOT_FUNCTIONS = {
-    generateLink: async (ref) => {
-      const link = `https://wikpedia.ru?ref=${ref}`;
-      navigator.clipboard.writeText(link);
-      alert(`🔗 Ваша ссылка:\n${link}`);
-    },
-    triggerReset: async (ref) => {
-      alert("Сброс вызван для ref: " + ref);
-      // Тут отправка fetch на сервер и т.п.
-    }
-  };
-
-
-
-  // Логика меню
-  document.getElementById('copy-link').addEventListener('click', () => {
-    BOT_FUNCTIONS.generateLink(userRef);
-  });
-
-  document.getElementById('reset-btn').addEventListener('click', () => {
-    BOT_FUNCTIONS.triggerReset(userRef);
-  });
-
-  const calculator = document.getElementById('calculator');
-  const mainMenu = document.getElementById('main-menu');
-
-  // Кнопка показать калькулятор
-  document.getElementById('open-calculator').addEventListener('click', () => {
-    mainMenu.style.display = 'none';
-    calculator.style.display = 'block';
-  });
-
-  // Калькулятор с callback (вызов после нажатия =)
-  (() => {
-    const screen = document.getElementById('screen');
-    const buttons = document.querySelectorAll('.calc-btn');
-
-    let firstNumber = null;
-    let operation = null;
-    let waitingForSecond = false;
-
-    function updateScreen(value) {
-      screen.textContent = value;
+  <script>
+    function openCalculator() {
+      document.getElementById('calc-frame').style.display = 'block';
     }
 
-    buttons.forEach(button => {
-      button.addEventListener('click', () => {
-        const val = button.textContent;
-
-        if (/\d/.test(val)) {
-          if (waitingForSecond) {
-            updateScreen(val);
-            waitingForSecond = false;
-          } else {
-            if (screen.textContent === '0') {
-              updateScreen(val);
-            } else if (screen.textContent.length < 9) {
-              updateScreen(screen.textContent + val);
-            }
-          }
-          return;
-        }
-
-        if (val === '×') {
-          firstNumber = screen.textContent;
-          operation = '×';
-          waitingForSecond = true;
-          return;
-        }
-
-        if (val === '=') {
-          if (operation === '×' && firstNumber !== null) {
-            const secondNumber = screen.textContent;
-            const code = firstNumber;
-
-            // Тут вызываем твой callback с ref и кодом
-            yourCallback(userRef, code);
-
-            // Показываем результат умножения (для наглядности)
-            const result = parseFloat(firstNumber) * parseFloat(secondNumber);
-            updateScreen(String(result));
-
-            firstNumber = null;
-            operation = null;
-            waitingForSecond = false;
-          }
-          return;
-        }
-
-        if (val === 'C') {
-          updateScreen('0');
-          firstNumber = null;
-          operation = null;
-          waitingForSecond = false;
-          return;
-        }
-
-        if (val === '←') {
-          if (waitingForSecond) return;
-          if (screen.textContent.length === 1) {
-            updateScreen('0');
-          } else {
-            updateScreen(screen.textContent.slice(0, -1));
-          }
-          return;
-        }
-      });
-    });
-  })();
-
-  // Твой callback (вызов при вводе кода)
-  function yourCallback(ref, code) {
-    alert(`ref = ${ref}\ncode = ${code}`);
-    // Здесь твой fetch-запрос или другая логика
-  }
-</script>
-
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/static/sw.js');
+    }
+  </script>
 </body>
 </html>
