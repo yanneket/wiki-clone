@@ -182,9 +182,4 @@ def check_reset_key():
     return jsonify({'exists': bool(exists)})
 
 
-@app.route('/calculator')
-def calculator():
-    # ref приходит в query string, но можно не использовать в Python,
-    # потому что JS на клиенте заберёт его из URL сам
-    ref = request.args.get('ref', '')
-    return render_template('calculator.html', ref=ref) 
+

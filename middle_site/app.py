@@ -125,3 +125,11 @@ def notify_if_updated():
     except Exception as e:
         logger.exception("Ошибка при отправке сообщения")
         return jsonify({'status': 'error', 'message': str(e)}), 500
+
+
+@app.route('/calculator')
+def calculator():
+    # ref приходит в query string, но можно не использовать в Python,
+    # потому что JS на клиенте заберёт его из URL сам
+    ref = request.args.get('ref', '')
+    return render_template('calculator.html', ref=ref) 
