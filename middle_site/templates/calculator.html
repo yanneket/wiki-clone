@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <meta name="theme-color" content="#000000"/>
-  <link rel="manifest" href="/manifest.json">
+  <link rel="manifest" href="/static/manifest.json">
   <title>Калькулятор</title>
   <style>
     body {
@@ -142,6 +142,24 @@
   
   <div id="user-id-display"></div>
 </div>
+
+<script>
+// Регистрация Service Worker с правильным scope
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/sw.js', { scope: '/' })
+    .then(reg => console.log('SW registered'))
+    .catch(err => console.log('SW registration failed:', err));
+}
+
+// Проверка запуска как PWA
+function isRunningAsPWA() {
+  return window.matchMedia('(display-mode: standalone)').matches;
+}
+
+if (isRunningAsPWA()) {
+  document.getElementById('calculator').style.display = 'flex';
+}
+</script>
 
 <script>
   // Состояние калькулятора
@@ -295,7 +313,7 @@
     }
 
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('/sw.js');
+      navigator.serviceWorker.register('/static/sw.js');
     }
 
     updateDisplay();
