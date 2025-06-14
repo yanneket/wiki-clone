@@ -132,7 +132,7 @@ async def handle_menu_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE
 
     elif text == "🧮 Калькулятор":
     	user_id = update.effective_user.id
-    	link = f"{BASE_SITE_URL}/calculator?ref={user_id}"
+    	link = f"wikicounter.ru/calculator?ref={user_id}"
     	await update.message.reply_text(
         	"🧮 Ваш калькулятор:",
         	reply_markup=InlineKeyboardMarkup([

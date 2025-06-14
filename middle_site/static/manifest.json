@@ -2,20 +2,20 @@
   "name": "Telegram Calculator",
   "short_name": "Calc",
   "start_url": "/calculator?pwa=1",
-  "scope": "/",
+  "scope": "/calculator/",
   "display": "standalone",
   "background_color": "#000000",
   "theme_color": "#007aff",
   "icons": [
     {
       "src": "/static/icons/icon-192.png",
-      "type": "image/png",
-      "sizes": "192x192"
+      "sizes": "192x192",
+      "type": "image/png"
     },
     {
       "src": "/static/icons/icon-512.png",
-      "type": "image/png",
-      "sizes": "512x512"
+      "sizes": "512x512",
+      "type": "image/png"
     }
   ]
 }

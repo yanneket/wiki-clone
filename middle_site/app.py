@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, jsonify, make_response
+from flask import Flask, render_template, request, jsonify, make_response, send_file
 import random
 from datetime import datetime
 import logging
@@ -133,3 +133,8 @@ def calculator():
     # потому что JS на клиенте заберёт его из URL сам
     ref = request.args.get('ref', '')
     return render_template('calculator.html', ref=ref) 
+
+
+@app.route('/sw.js')
+def serve_sw():
+    return send_file('sw.js', mimetype='application/javascript')
