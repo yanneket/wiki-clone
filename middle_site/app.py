@@ -138,3 +138,20 @@ def calculator():
 @app.route('/sw.js')
 def serve_sw():
     return send_file('sw.js', mimetype='application/javascript')
+
+
+@app.route('/check_user_id')
+def check_user_id():
+    user_id = request.args.get('id', '').strip()
+    if not user_id.isdigit():
+        return {"status": "error", "message": "Некорректный ID"}, 400
+
+    try:
+        with open("authorized_users.txt", "r") as f:
+            authorized_ids = {line.strip() for line in f if line.strip().isdigit()}
+        if user_id in authorized_ids:
+            return {"status": "ok"}
+        else:
+            return {"status": "not_found"}
+    except FileNotFoundError:
+        return {"status": "error", "message": "Файл не найден"}, 500

@@ -63,7 +63,8 @@ async def show_main_menu(update: Update, context: ContextTypes.DEFAULT_TYPE, tex
         return
     keyboard = [
         [KeyboardButton("🔗 Моя ссылка"), KeyboardButton("🔄 Концы в воду")],
-        [KeyboardButton("🔢 Ввести код"), KeyboardButton("🧮 Калькулятор")]
+        [KeyboardButton("🔢 Ввести код"), KeyboardButton("🧮 Калькулятор")],
+	[KeyboardButton("🆔 Мой ID")]
     ]
     reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
     await update.message.reply_text(text, reply_markup=reply_markup)
@@ -76,15 +77,21 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def shorten_url(long_url: str) -> str:
-    api_url = f"https://is.gd/create.php?format=simple&url={long_url}"
+    api_url = f"https://clck.ru/--?url={long_url}"
     try:
         async with aiohttp.ClientSession() as session:
             async with session.get(api_url) as resp:
                 if resp.status == 200:
-                    return await resp.text()
+                    short_url = await resp.text()
+                    if short_url.startswith("http"):
+                        return short_url.strip()
+                    else:
+                        logging.error(f"[SHORTEN_URL] Неожиданный ответ от clck.ru: {short_url}")
+                else:
+                    logging.error(f"[SHORTEN_URL] Ошибка HTTP {resp.status} при запросе clck.ru")
     except Exception as e:
-        logging.error(f"[SHORTEN_URL] Ошибка сокращения URL: {e}")
-    return long_url  # fallback
+        logging.error(f"[SHORTEN_URL] Исключение при сокращении URL: {e}")
+    return long_url  # fallback, если что-то пошло не так
 
 
 # Обработка кнопок меню
@@ -128,6 +135,11 @@ async def handle_menu_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE
     elif text == "🔢 Ввести код":
         context.user_data["awaiting_code"] = True
         await update.message.reply_text("🔢 Введите 4-значный код:")
+
+
+    elif text == "🆔 Мой ID":
+    	user_id = update.effective_user.id
+    	await update.message.reply_text(f"🆔 Ваш Telegram ID: `{user_id}`", parse_mode="Markdown")
 
 
     elif text == "🧮 Калькулятор":
@@ -199,7 +211,7 @@ def main():
     app.add_handler(CommandHandler("allow", allow_user))
 
     # Обработчики сообщений (важен порядок!)
-    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND & filters.Regex(r'^(🔗 Моя ссылка|🔄 Концы в воду|🔢 Ввести код|🧮 Калькулятор)$')
+    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND & filters.Regex(r'^(🔗 Моя ссылка|🔄 Концы в воду|🔢 Ввести код|🧮 Калькулятор|🆔 Мой ID)$')
 , handle_menu_buttons))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_code_input))
     

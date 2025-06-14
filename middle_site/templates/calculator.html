@@ -1,8 +1,8 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <meta name="theme-color" content="#000000"/>
   <link rel="manifest" href="/static/manifest.json">
   <title>Калькулятор</title>
@@ -108,7 +108,6 @@
 <body>
 
 <div id="ref-display">Ваш ID: загрузка...</div>
-<button class="open-btn" onclick="openCalculator()">Открыть калькулятор</button>
 
 <div id="calculator">
   <div id="display">0</div>
@@ -160,30 +159,46 @@ function isRunningAsPWA() {
          window.navigator.standalone === true;
 }
 
+async function checkUserId(id) {
+  try {
+    const response = await fetch(`/check_user_id?id=${encodeURIComponent(id)}`);
+    const result = await response.json();
+    return result.status === "ok";
+  } catch (e) {
+    console.error("Ошибка при проверке ID:", e);
+    return false;
+  }
+}
+
+
 // === Работа с ref ===
-function initializeRef() {
+async function initializeRef() {
   // 1. Пробуем получить ref из URL
   const params = new URLSearchParams(window.location.search);
   const urlRef = params.get('ref');
-  
-  // 2. Если есть в URL - сохраняем и используем
+
   if (urlRef) {
     localStorage.setItem('telegram_ref', urlRef);
     return urlRef;
   }
-  
-  // 3. Пробуем получить из localStorage
+
+  // 2. Пробуем получить из localStorage
   const storedRef = localStorage.getItem('telegram_ref');
   if (storedRef) return storedRef;
-  
-  // 4. Если ничего нет - запрашиваем у пользователя
-  const userRef = prompt("Введите ваш ID:");
-  if (userRef) {
-    localStorage.setItem('telegram_ref', userRef);
-    return userRef;
+
+  // 3. Запрашиваем у пользователя до тех пор, пока не введет корректный ID или не отменит
+  while (true) {
+    const userRef = prompt("Введите ваш ID:");
+    if (!userRef) return null; // Пользователь нажал "Отмена"
+
+    const isValid = await checkUserId(userRef);
+    if (isValid) {
+      localStorage.setItem('telegram_ref', userRef);
+      return userRef;
+    } else {
+      alert("❌ Такой ID не найден. Попробуйте снова.");
+    }
   }
-  
-  return null;
 }
 
 // === Отправка кода ===
@@ -294,8 +309,8 @@ function closeCalculator() {
 }
 
 // Инициализация при загрузке
-window.addEventListener('DOMContentLoaded', () => {
-  ref = initializeRef();
+window.addEventListener('DOMContentLoaded', async() => {
+  ref = await initializeRef();
   const refDisplay = document.getElementById('ref-display');
   
   if (ref) {
@@ -307,7 +322,7 @@ window.addEventListener('DOMContentLoaded', () => {
   }
   
   // Показываем калькулятор если PWA или есть ref
-  if (isRunningAsPWA() || ref) {
+  if (ref && typeof ref === 'string' && ref.trim() !== '') {
     openCalculator();
   }
   
